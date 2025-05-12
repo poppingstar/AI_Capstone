@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import torchvision
 from torch.utils.data import DataLoader
 from torchvision.models import efficientnet_b7, EfficientNet_B7_Weights
 import util.trainer as trainer
