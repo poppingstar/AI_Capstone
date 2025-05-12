@@ -2,6 +2,7 @@ from pathlib import Path
 import pandas as pd
 import shutil
 
+
 def labeling(dataset_path, label_file):
     dataset_path=Path(dataset_path)
     outputdir=dataset_path/'output'
@@ -17,6 +18,7 @@ def labeling(dataset_path, label_file):
         label_dir.mkdir(exist_ok=True)
 
         original_path.rename(label_dir/file.name)
+
 
 def split(dataset_path:Path, val_rate=0.2, test_rate=0.1):
     train_dir=dataset_path/'train'
@@ -49,6 +51,7 @@ def find_low_dirs(path:Path):
     low_dirs = path.parent.iterdir()
     return low_dirs
 
+
 #멀티 스레딩 포함해서 재설계 ㄱㄱ
 def main(dataset:Path, destination:Path, num_per_class:int):
     class_dirs = dataset.iterdir()
@@ -77,6 +80,7 @@ def main(dataset:Path, destination:Path, num_per_class:int):
                     shutil.copy(img, destination / class_dir.name / img.name)
 
             file_num_maps = {k:v-m for k,v in file_num_maps.items() if v > 0}
+
 
 if __name__ == '__main__':
     dataset_path = Path(r"C:\Users\user\Desktop\deepfake and real images")
