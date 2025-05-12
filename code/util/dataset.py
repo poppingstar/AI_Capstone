@@ -23,7 +23,7 @@ def labeling(dataset_path, label_file):
 def split(dataset_path:Path, val_rate=0.2, test_rate=0.1):
     train_dir=dataset_path/'train'
     for d in train_dir.iterdir():
-        if not d.is_dir:
+        if not d.is_dir():
             continue
 
         flist=[f for f in d.iterdir()]
@@ -83,5 +83,5 @@ def main(dataset:Path, destination:Path, num_per_class:int):
 
 
 if __name__ == '__main__':
-    dataset_path = Path(r"C:\Users\user\Desktop\deepfake and real images")
+    dataset_path = Path(r"E:\Datasets\deep_real")
     split(dataset_path)

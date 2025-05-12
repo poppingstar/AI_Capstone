@@ -1,9 +1,8 @@
 import util.trainer as trainer
-import torchvision, torch
+import torch
 import torch.nn as nn
 import torch.utils.data as data
 from torchvision.models import mobilenet_v3_small, MobileNet_V3_Small_Weights
-from PIL import Image
 from pathlib import Path
 
 def main():
@@ -17,9 +16,9 @@ def main():
   valid_set=trainer.DirDataset(dir_path/'valid',transforms=hyper.transforms['valid'])
   test_set=trainer.DirDataset(dir_path/'test',transforms=hyper.transforms['test'])
 
-  train_loader=data.DataLoader(train_set,hyper.batch,True,num_workers=hyper.workers,pin_memory=True,drop_last=False)
-  valid_loader=data.DataLoader(valid_set,hyper.batch,True,num_workers=hyper.workers,pin_memory=True,drop_last=False)
-  test_loader=data.DataLoader(test_set,hyper.batch,shuffle=True,num_workers=hyper.workers,pin_memory=True,drop_last=False)
+  train_loader=data.DataLoader(train_set,hyper.batch_size,True,num_workers=hyper.workers,pin_memory=True,drop_last=False)
+  valid_loader=data.DataLoader(valid_set,hyper.batch_size,True,num_workers=hyper.workers,pin_memory=True,drop_last=False)
+  test_loader=data.DataLoader(test_set,hyper.batch_size,shuffle=True,num_workers=hyper.workers,pin_memory=True,drop_last=False)
   classes_num=len(train_set.classes)  #데이터 셋의 클래스 개수 가져오기
   
   model=mobilenet_v3_small(weights=MobileNet_V3_Small_Weights.DEFAULT)

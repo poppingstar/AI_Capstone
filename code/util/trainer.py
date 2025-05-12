@@ -14,10 +14,16 @@ from dataclasses import dataclass
 
 plt.switch_backend('agg')
 
+
+def check_path(path):
+	path = Path(path)
+	path.mkdir(parents=True, exist_ok=True)
+
+
 @dataclass
 class HyperParameter():
-	def __init__(self, save_point=30, batch=64, workers=12, epochs=10000, patience=10, lr=0.0005, inplace=(224,224), transforms:dict=None, criterion=nn.CrossEntropyLoss(reduction='sum'), optimizer:optim.Optimizer=None):
-		for param, name in zip((save_point, batch, workers, epochs, patience),('save_point', 'batch', 'workers', 'epochs', 'patience')):
+	def __init__(self, save_point=30, batch_size=64, workers=12, epochs=10000, patience=10, lr=0.0005, inplace=(224,224), transforms:dict=None, criterion=nn.CrossEntropyLoss(reduction='sum'), optimizer:optim.Optimizer=None):
+		for param, name in zip((save_point, batch_size, workers, epochs, patience),('save_point', 'batch', 'workers', 'epochs', 'patience')):
 			assert isinstance(param, int), f'{name} must be instance of int'
 		assert isinstance(lr, (float, int)), 'lr must be instance of float or int'
 		assert isinstance(inplace, (int, tuple)), 'inplace must be int or tuple'
@@ -28,7 +34,7 @@ class HyperParameter():
 			assert isinstance(optimizer, torch.optim.Optimizer), 'parameter must be instance of Optimizer'
 		
 		self.save_point=save_point
-		self.batch=batch
+		self.batch_size=batch_size
 		self.workers=workers
 		self.epochs=epochs
 		self.patience=patience
@@ -41,8 +47,7 @@ class HyperParameter():
 			self.transforms=transforms
 		else:
 			self.transforms={  #케이스 별 transform 정의
-			'train':torchvision.transforms.Compose([torchvision.transforms.Resize(self.inplace), torchvision.transforms.RandomHorizontalFlip(),
-															torchvision.transforms.RandomRotation(5), torchvision.transforms.ToTensor()]),
+			'train':torchvision.transforms.Compose([torchvision.transforms.Resize(self.inplace), torchvision.transforms.ToTensor()]),
 			'valid':torchvision.transforms.Compose([torchvision.transforms.Resize(self.inplace), torchvision.transforms.ToTensor()]),
 			'test':torchvision.transforms.Compose([torchvision.transforms.Resize(self.inplace),  torchvision.transforms.ToTensor()])
 			}
@@ -58,9 +63,12 @@ class HyperParameter():
 	def nomalize(self, img:torch.Tensor):
 		return img.float()/255.0
 	
-	def save_log(self, file):
+	def save_log(self, file = None):
+		file = Path(file)
+		check_path(file.parent)
+
 		hyper_log=f'''save_point: {self.save_point}
-batch_size: {self.batch}
+batch_size: {self.batch_size}
 epochs: {self.epochs}
 patience: {self.patience}
 lr: {self.lr}
@@ -69,8 +77,10 @@ optimizer: {self.optimizer}
 inplace: {self.inplace}
 workers: {self.workers}
 '''
+		
 		with open(file,'a',encoding='utf-8') as f:
 			f.write(hyper_log)
+
 
 class DirDataset(data.Dataset):
 	def __init__(self, dataset_path, transforms=None):
@@ -112,9 +122,11 @@ class DirDataset(data.Dataset):
 
 		return img, label
 
+
 def save_log(save_dir, *metrics):
 	with open(save_dir/'log.txt','a') as f:
 		f.writelines([line+'\n' for line in metrics])
+
 
 def get_confusion(outputs:torch.Tensor, labels:torch.Tensor):
 	num_classes=outputs.shape[1]
@@ -126,6 +138,7 @@ def get_confusion(outputs:torch.Tensor, labels:torch.Tensor):
 	tn=cm.sum()-fn-fp-tp
 
 	return [value.sum().item() for value in (tp,fp,fn,tn)]
+
 
 def no_overwrite(path, mode='dir')->Path: #기존 훈련 파일이 덮어써지지 않도록 하는 함수
 	path=Path(path)
@@ -147,6 +160,7 @@ def no_overwrite(path, mode='dir')->Path: #기존 훈련 파일이 덮어써지�
 				i+=1
 				path=path.with_name(f'{i}') #없는 디렉토리가 나올 때 까지 숫자를 증가시키며 적용
 			return path
+
 
 def run_epoch(model:nn.Module, loader:DataLoader, criterion:_WeightedLoss, optimizer:optim.Optimizer, device:torch.device, mode:str): #에폭 하나를 실행
 	epoch_loss,epoch_acc=.0,.0  #loss, accuracy 초기화
@@ -185,7 +199,7 @@ def run_epoch(model:nn.Module, loader:DataLoader, criterion:_WeightedLoss, optim
 		dataset_size+=batch_size
 
 		tp,tn,fp,fn=get_confusion(outputs, labels)
-		epoch_tp+=tp	#이게 원인일지도
+		epoch_tp+=tp
 		epoch_tn+=tn
 		epoch_fp+=fp
 		epoch_fn+=fn
@@ -208,6 +222,7 @@ def run_epoch(model:nn.Module, loader:DataLoader, criterion:_WeightedLoss, optim
 	# print(f'{epoch_fn+epoch_tp+epoch_fp+epoch_tn}, {dataset_size}')
 	# print(f'confusion: {(epoch_tp+epoch_fp)/dataset_size}, {(epoch_tp+epoch_fp)/(epoch_tp+epoch_fp+epoch_tn+epoch_fn)}, acc: {epoch_acc} ')
 	return epoch_loss, epoch_acc, precision, recall #loss와 acc의 평균 반환
+
 
 def train(model:nn.Module, train_loader:DataLoader, valid_loader:DataLoader, hyper_param, save_dir:Union[Path,str]):  #훈련 함수
 	save_dir=Path(save_dir); save_dir.mkdir(exist_ok=True,parents=True)
@@ -269,6 +284,7 @@ def train(model:nn.Module, train_loader:DataLoader, valid_loader:DataLoader, hyp
 	torch.save(model.state_dict(),last_path)
 	model.load_state_dict(torch.load(best_path,weights_only=True))
 
+
 def test(model:nn.Module, test_loader:DataLoader, hyper_param, save_dir):
 	device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 	model.to(device)
@@ -283,9 +299,11 @@ def test(model:nn.Module, test_loader:DataLoader, hyper_param, save_dir):
 		with open(save_dir/'log.txt','a') as f:
 			f.write(f'test: {metrics}')
 
+
 def train_test(model:nn.Module, train_loader:DataLoader, valid_loader:DataLoader, test_loader:DataLoader, hyper_param:HyperParameter, save_dir:Union[Path,str]):  #훈련 및 테스트트 함수
 	train(model, train_loader, valid_loader, hyper_param, save_dir)
 	test(model, test_loader, hyper_param, save_dir)
+
 
 def draw_graph(loss, accuracy, save_path):
 	plt.plot(loss,'b-', label='Loss')
@@ -297,6 +315,15 @@ def draw_graph(loss, accuracy, save_path):
 	plt.title('Model Graph')
 	plt.savefig(save_path)
 	plt.close()
+
+
+def gradinet_freeze(model:torch.nn.Module, *exclude):
+	for param in model.parameters():
+		param.requires_grad = False
+	
+	for param in exclude:
+		param.requires_grad = True
+
 
 if __name__=='__main__':
 	pass
