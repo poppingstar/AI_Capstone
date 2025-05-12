@@ -38,7 +38,7 @@ def find_img_files(img_dir:str) -> list[Path]:
     return img_paths
 
 
-def get_imgs(paths:list[str])->list[np.ndarray]:
+def get_imgs(paths:list[str])->np.ndarray[np.ndarray]:
     max_threads_num = os.cpu_count()
     subset_size = len(paths)//max_threads_num
 
@@ -49,13 +49,13 @@ def get_imgs(paths:list[str])->list[np.ndarray]:
         subsets[-1].extend(paths[max_threads_num*subset_size:])
         
     read_imgs = lambda path_subset: [cv.imread(path) for path in path_subset]
-    with ThreadPoolExecutor(max_threads_num) as exe:
-        futures = [exe.submit(read_imgs, subset) for subset in subsets]
+    with ThreadPoolExecutor(max_threads_num) as executor:
+        futures = [executor.submit(read_imgs, subset) for subset in subsets]
     
     bgr_imgs = []
     for future in futures:
         bgr_imgs.extend(future.result())
-    return bgr_imgs    
+    return np.array(bgr_imgs)
 
 
 def gray_seperation(img_dir):
@@ -72,17 +72,47 @@ def gray_seperation(img_dir):
         shutil.move(gray_img, seperation_dir/gray_img.name)
 
 
-def refine_same_img(imgs:list[np.ndarray]):
-    pass
+def refine_same_img(imgs:np.ndarray[np.ndarray]):
+    img_shape = imgs.shape[1:]
+    img_dtype = imgs.dtype
+
+    img_bytes = [img.tobytes() for img in imgs]
+    _, indices = np.unique(img_bytes, return_index=True)
+
+    unique_imgs = []
+    for i in indices:
+        unique_imgs.append(imgs[i])
+    
+    return unique_imgs
 
 
-def hsv_analytics(Ipath):
-    bgr_img = cv.imread(Ipath)
-    h, s, v = cv.split(cv.cvtColor(bgr_img, cv.COLOR_BGR2HSV))
+def sperate_unique_imgs(src_dir:str, dst_dir:str):
+    paths = list(Path(src_dir).iterdir())
+    imgs = get_imgs(paths)
+    
+    unique_imgs = refine_same_img(imgs)
 
+    for i, img in enumerate(unique_imgs):
+        cv.imwrite(f'{dst_dir}/{i}.png', img)
+
+
+def equalize_classes(*class_dirs):
+    min_class_size = float('inf')
+    all_class_files = []
+
+    for class_dir in class_dirs:
+        files = list(Path(class_dir).iterdir())
+        min_class_size =  min_class_size if min_class_size < len(files) else len(files)
+        all_class_files.append(files)
+    
+    for files in all_class_files:
+        excess_files = files[min_class_size:]
+        for excess_file in excess_files:
+            shutil.move(excess_file, rf"E:\Datasets\deep_real\e\{excess_file.name}")
+    
 
 if __name__ == '__main__':
-    pass
+    equalize_classes(r"E:\Datasets\deep_real\ufake", r"E:\Datasets\deep_real\ureal")
 
 # def temp(d1, d2):
 #     d1_flist = list(Path(d1).iterdir())
