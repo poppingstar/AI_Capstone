@@ -3,7 +3,6 @@ import numpy as np
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor 
 import shutil, os
-import matplotlib.pyplot as plt
 
 
 def get_saturation(img_path):

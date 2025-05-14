@@ -1,6 +1,9 @@
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+import PIL.Image as Image
 import pandas as pd
-import shutil
+from torchvision import transforms
+import shutil, os
 
 
 def labeling(dataset_path, label_file):
@@ -45,6 +48,7 @@ def split(dataset_path:Path, val_rate=0.2, test_rate=0.1):
         for file in test_files:
             file.rename(test_dir/file.name)
 
+
 def find_low_dirs(path:Path):
     while path.is_dir():
         path = path.iterdir()[0]
@@ -52,6 +56,95 @@ def find_low_dirs(path:Path):
     return low_dirs
 
 
+def get_imgs(paths:list[str])->list:
+    max_threads_num = os.cpu_count()
+    subset_size = len(paths)//max_threads_num
+
+    if len(paths) <= max_threads_num:
+        subsets = [paths]
+    else: 
+        subsets = [paths[(i)*subset_size:(i+1)*subset_size] for i in range(max_threads_num)]
+        subsets[-1].extend(paths[max_threads_num*subset_size:])
+        
+    def load_image_subset(path_subset):
+        subset_imgs = []
+        for p in path_subset:
+            with Image.open(p) as img:
+                subset_imgs.append(img.copy())
+        return subset_imgs
+
+    
+    with ThreadPoolExecutor(max_threads_num) as executor:
+        futures = [executor.submit(load_image_subset, subset) for subset in subsets]
+    
+    imgs = []
+    for future in futures:
+        imgs.extend(future.result())
+    return imgs
+
+
+def save_imgs(imgs, output_dir:str):        
+    max_threads_num = os.cpu_count() or 6
+    subset_size = len(imgs)//max_threads_num
+
+    if len(imgs) <= max_threads_num:
+        subsets = [imgs]
+    else: 
+        subsets = [imgs[(i)*subset_size:(i+1)*subset_size] for i in range(max_threads_num)]
+        subsets[-1].extend(imgs[max_threads_num*subset_size:])
+        
+    def save_image_subset(imgs:list, output_dir:str, start_name):
+        for i, img in enumerate(imgs):
+            img.save(output_dir/f'{start_name + i}.png')
+
+    #디렉토리에 기존 파일 여부 확인
+    output_dir = Path(output_dir)
+    if not output_dir.exists():
+        output_dir.mkdir(parents=True)
+        start_num = 0
+    else:
+        exist_fies = output_dir.iterdir()
+        exist_fies_num = sum(1 for file in exist_fies if file.is_file())
+        start_num = exist_fies_num + 1
+
+    #스레드 실행
+    with ThreadPoolExecutor(max_threads_num) as executor:
+        for subset in subsets:
+            executor.submit(save_image_subset, subset, output_dir, start_num)
+            start_num += len(subset)
+
+
+def augment(times, imgs, transformer, output_dir):
+    augemted_imgs = []
+    for img in imgs:
+        for _ in range(times):
+            augemted_imgs.append(transformer(img))
+
+    save_imgs(augemted_imgs, output_dir)
+
+    # for augmentd_img in augemted_imgs:
+    #     augmentd_img.save(output_dir/f'{file_name}.png')
+    #     file_name += 1
+
+
+def m2(dir_path:Path):
+    sub_files = list(dir_path.iterdir())
+    imgs = get_imgs(sub_files)
+    transformer = transforms.Compose([transforms.RandomHorizontalFlip(), transforms.RandomRotation(5),
+                    transforms.ColorJitter(0.1,0.1,0.1,0.1),
+                    transforms.RandomAffine(degrees=0, translate=(0.1,0.1))
+                    ])
+    output_dir = dir_path.parent/f'{dir_path.name}_augmented'
+    augment(3, imgs, transformer, output_dir)
+
+
+if __name__ == '__main__':
+    p = Path(r"E:\Datasets\deep_fake\valid")
+    for sub_dir in p.iterdir():
+        m2(sub_dir)
+
+
+""" 
 #멀티 스레딩 포함해서 재설계 ㄱㄱ
 def main(dataset:Path, destination:Path, num_per_class:int):
     class_dirs = dataset.iterdir()
@@ -80,8 +173,4 @@ def main(dataset:Path, destination:Path, num_per_class:int):
                     shutil.copy(img, destination / class_dir.name / img.name)
 
             file_num_maps = {k:v-m for k,v in file_num_maps.items() if v > 0}
-
-
-if __name__ == '__main__':
-    dataset_path = Path(r"E:\Datasets\deep_real")
-    split(dataset_path)
+"""

@@ -22,7 +22,8 @@ def check_path(path):
 
 @dataclass
 class HyperParameter():
-	def __init__(self, save_point=30, batch_size=64, workers=12, epochs=10000, patience=10, lr=0.0005, inplace=(224,224), transforms:dict=None, criterion=nn.CrossEntropyLoss(reduction='sum'), optimizer:optim.Optimizer=None):
+	def __init__(self, save_point=30, batch_size=64, workers=12, epochs=10000, patience=10, lr=0.0005, inplace=(224,224),
+				transforms:dict=None, criterion=nn.CrossEntropyLoss(reduction='sum'), optimizer:optim.Optimizer=None):
 		for param, name in zip((save_point, batch_size, workers, epochs, patience),('save_point', 'batch', 'workers', 'epochs', 'patience')):
 			assert isinstance(param, int), f'{name} must be instance of int'
 		assert isinstance(lr, (float, int)), 'lr must be instance of float or int'
@@ -241,7 +242,7 @@ def train(model:nn.Module, train_loader:DataLoader, valid_loader:DataLoader, hyp
 	valid_losses,valid_accuracies=[],[]
 	for epoch in range(1, hyper_param.epochs+1):
 		since=time.time()  #에폭 시작 시간
-		train_loss, train_accuracy, train_precision, tarin_recall=run_epoch(model, train_loader, hyper_param.criterion, hyper_param.optimizer, device, 'train')  #훈련 실행
+		train_loss, train_accuracy, train_precision, tarin_recall = run_epoch(model, train_loader, hyper_param.criterion, hyper_param.optimizer, device, 'train')  #훈련 실행
 		valid_loss, valid_accuracy, valid_precision, valid_recall=run_epoch(model, valid_loader, hyper_param.criterion, hyper_param.optimizer, device, 'valid')  #검증 실행
 
 		duration=time.time()-since  #에폭 수행시간 계산
@@ -317,12 +318,16 @@ def draw_graph(loss, accuracy, save_path):
 	plt.close()
 
 
-def gradinet_freeze(model:torch.nn.Module, *exclude):
-	for param in model.parameters():
+def layer_freeze(model:torch.nn.Module, freeze_until_layer_name = None, freeze_until_layer_num = None):	#until 없으면 전부 freeze
+	num = 0
+	for name, param in model.named_parameters():
+		name_match = name.startswith(freeze_until_layer_name) if freeze_until_layer_name else False
+		num_match = freeze_until_layer_num == num
+
+		if name_match or name_match:
+			break
 		param.requires_grad = False
-	
-	for param in exclude:
-		param.requires_grad = True
+		num += 1
 
 
 if __name__=='__main__':
