@@ -7,7 +7,7 @@ from pathlib import Path
 import yaml
 
 def main():
-    hyper = trainer.HyperParameter(batch_size=384)
+    hyper = trainer.HyperParameter(batch_size=64, patience=5, save_point=5)
 
     dataset_path = Path(r"E:\Datasets\deep_fake")
     save_dir = dataset_path/'weights'/'EfficientNet_B7'
