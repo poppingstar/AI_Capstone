@@ -9,7 +9,7 @@ def main():
     dir_path = Path(r"C:\Users\user\Desktop\deepfake and real images")
     save_dir = dir_path/'weights'/'paper_competition'/'ResNet_152'
 
-    hyper=trainer.HyperParameter()
+    hyper=trainer.TrainConfig()
 
     train_set = trainer.DirDataset(dir_path/'train', transforms=hyper.transforms['train'])
     valid_set = trainer.DirDataset(dir_path/'valid', transforms=hyper.transforms['valid'])

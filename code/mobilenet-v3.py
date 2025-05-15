@@ -9,7 +9,7 @@ def main():
   dir_path=Path(r"C:\Users\user\Desktop\deepfake and real images")
   save_dir=dir_path/'weights'/'paper_competition'/'MoblieNet_small'
 
-  hyper = trainer.HyperParameter()
+  hyper = trainer.TrainConfig()
 
   #데이터 셋 및 데이터 로더 생성
   train_set=trainer.DirDataset(dir_path/'train',transforms=hyper.transforms['train'])
