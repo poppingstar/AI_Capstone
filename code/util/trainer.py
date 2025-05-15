@@ -320,11 +320,11 @@ def draw_graph(loss, accuracy, save_path):
 
 def layer_freeze(model:torch.nn.Module, freeze_until_layer_name = None, freeze_until_layer_num = None):	#until 없으면 전부 freeze
 	num = 0
-	for name, param in model.named_parameters():
-		name_match = name.startswith(freeze_until_layer_name) if freeze_until_layer_name else False
+	is_name_match = (lambda name:name.startswith(freeze_until_layer_name)) if freeze_until_layer_name else (lambda _: False)
+	for name, param in model.named_modules():
 		num_match = freeze_until_layer_num == num
 
-		if name_match or name_match:
+		if is_name_match(name) or num_match:
 			break
 		param.requires_grad = False
 		num += 1

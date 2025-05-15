@@ -35,5 +35,6 @@ def main():
     trainer.train_test(model, train_loader, validation_loader, 
                             test_loader, hyper, save_dir)
 
+
 if __name__ == '__main__':
     main()
