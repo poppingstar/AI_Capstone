@@ -31,20 +31,20 @@ def main():
     test_loader = DataLoader(test_dataset, hyper.batch_size,True,num_workers=hyper.workers,pin_memory=True,drop_last=False)
     class_num = len(train_dataset.classes)
 
-    # model = efficientnet_b7(weights=EfficientNet_B7_Weights.DEFAULT)
+    model = efficientnet_b7(weights=EfficientNet_B7_Weights.DEFAULT)
     model = efficientnet_b0(weights=EfficientNet_B0_Weights.DEFAULT)
-    # trainer.layer_freeze(model, 'features.6')
+    trainer.layer_freeze(model, 'features.6')
     for n, p in model.named_parameters():
         print(p.size())
-    # model.classifier[1] = nn.Linear(2560, out_features=class_num)
+    model.classifier[1] = nn.Linear(2560, out_features=class_num)
 
-    # optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), hyper.lr)
-    # hyper.set_optimizer(optimizer)
+    optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), hyper.lr)
+    hyper.set_optimizer(optimizer)
 
-    # hyper.save_log(save_dir/'log.txt')
+    hyper.save_log(save_dir/'log.txt')
 
-    # trainer.train_test(model, train_loader, validation_loader, 
-    #                         test_loader, hyper, save_dir)
+    trainer.train_test(model, train_loader, validation_loader, 
+                            test_loader, hyper, save_dir)
 
 
 if __name__ == '__main__':
