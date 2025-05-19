@@ -3,7 +3,7 @@ from pathlib import Path
 import PIL.Image as Image
 import pandas as pd
 from torchvision import transforms
-import shutil, os
+import shutil, os, re
 
 
 def labeling(dataset_path, label_file):
@@ -136,6 +136,38 @@ def m2(dir_path:Path):
                     ])
     output_dir = dir_path.parent/f'{dir_path.name}_augmented'
     augment(3, imgs, transformer, output_dir)
+
+
+def organize_files_by_regex(path:str|Path, expression:str|Path, file_only = True) -> None:
+    """
+    root_dir 내의 파일을 검색해,
+    정규식 `expression`에 매칭된 문자열을 폴더명으로 사용해 이동시킵니다.
+
+    Args:
+        root_dir (str | Path): 탐색할 최상위 디렉토리 경로
+        expression (str): 매칭할 정규식 패턴
+    """
+    d = Path(path)
+    pattern = re.compile(expression)
+    for child in d.iterdir():
+        if file_only and child.is_dir():
+            continue
+
+        match_result = pattern.search(child.name)
+
+        if not match_result:
+            continue
+
+        matched_string = match_result.group(0)
+        group_dir = child.parent/matched_string
+        group_dir.mkdir(exist_ok=True)
+
+        dst = group_dir/child.name
+
+        if child.resolve() == dst.resolve():
+            continue
+
+        shutil.move(child, dst)
 
 
 if __name__ == '__main__':

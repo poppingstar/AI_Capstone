@@ -30,11 +30,13 @@ def is_almost_gray(bgr_img:str)->bool:
     return is_gray
 
 
-def find_img_files(img_dir:str) -> list[Path]:
-    img_suffixs = ['.png', '.jpg']
+def find_files(img_dir:str, *file_formats) -> list[Path]:
     dir_path = Path(img_dir)
-    img_paths = [f for f in dir_path.iterdir() if f.suffix in img_suffixs]
-    return img_paths
+    file_paths = [
+        child for child in dir_path.iterdir() 
+        if child.is_file() and (not file_formats or child.suffix in file_formats)   #확장자 미전달 시 전부 포함
+        ]   
+    return file_paths
 
 
 def get_imgs(paths:list[str])->np.ndarray[np.ndarray]:
@@ -59,7 +61,7 @@ def get_imgs(paths:list[str])->np.ndarray[np.ndarray]:
 
 def gray_seperation(img_dir):
     img_dir = Path(img_dir)
-    img_paths = find_img_files(img_dir)
+    img_paths = find_files(img_dir, '.png', '.jpg')
     
     imgs = get_imgs(img_paths)
     gray_img_paths = [img_paths[i] for i, img in enumerate(imgs) if is_almost_gray(img)]
