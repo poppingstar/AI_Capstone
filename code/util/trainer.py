@@ -225,7 +225,7 @@ def run_epoch(model:nn.Module, loader:DataLoader, criterion:_WeightedLoss, optim
 	return epoch_loss, epoch_acc, precision, recall #loss와 acc의 평균 반환
 
 
-def train(model:nn.Module, train_loader:DataLoader, valid_loader:DataLoader, hyper_param, save_dir:Union[Path,str]):  #훈련 함수
+def train_valid_run(model:nn.Module, train_loader:DataLoader, valid_loader:DataLoader, hyper_param, save_dir:Union[Path,str]):  #훈련 함수
 	save_dir=Path(save_dir); save_dir.mkdir(exist_ok=True,parents=True)
 
 	device:torch.device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')  #사용 가능한 디바이스 확인
@@ -286,7 +286,7 @@ def train(model:nn.Module, train_loader:DataLoader, valid_loader:DataLoader, hyp
 	model.load_state_dict(torch.load(best_path,weights_only=True))
 
 
-def test(model:nn.Module, test_loader:DataLoader, hyper_param, save_dir):
+def test_run(model:nn.Module, test_loader:DataLoader, hyper_param, save_dir):
 	device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 	model.to(device)
 	since=time.time()*1000
@@ -302,8 +302,8 @@ def test(model:nn.Module, test_loader:DataLoader, hyper_param, save_dir):
 
 
 def train_test(model:nn.Module, train_loader:DataLoader, valid_loader:DataLoader, test_loader:DataLoader, hyper_param:HyperParameter, save_dir:Union[Path,str]):  #훈련 및 테스트트 함수
-	train(model, train_loader, valid_loader, hyper_param, save_dir)
-	test(model, test_loader, hyper_param, save_dir)
+	train_valid_run(model, train_loader, valid_loader, hyper_param, save_dir)
+	test_run(model, test_loader, hyper_param, save_dir)
 
 
 def draw_graph(loss, accuracy, save_path):
