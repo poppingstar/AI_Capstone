@@ -4,7 +4,7 @@ from torch.utils.data import DataLoader
 from torchvision.models import efficientnet_b7, EfficientNet_B7_Weights
 import util.trainer as trainer
 from pathlib import Path
-import yaml
+
 
 def main():
     hyper = trainer.HyperParameter(batch_size=64, patience=5, save_point=5)
@@ -25,18 +25,19 @@ def main():
 
     model = efficientnet_b7(weights=EfficientNet_B7_Weights.DEFAULT)
     trainer.layer_freeze(model, 'features.4')
+    model.classifier[1].in_features
     model.classifier[1] = nn.Linear(2560, out_features=class_num)
 
     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), hyper.lr)
     hyper.set_optimizer(optimizer)
 
-    for i, ii in model.named_parameters():
+    for i, _ in model.named_parameters():
         print(i)
 
-    # hyper.save_log(save_dir/'log.txt')
+    hyper.save_log(save_dir/'log.txt')
 
-    # trainer.train_test(model, train_loader, validation_loader, 
-    #                         test_loader, hyper, save_dir)
+    trainer.train_test(model, train_loader, validation_loader, 
+                            test_loader, hyper, save_dir)
 
 
 if __name__ == '__main__':
