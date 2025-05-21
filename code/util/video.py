@@ -3,7 +3,7 @@ import numpy as np
 from pathlib import Path
 import concurrent.futures as futures
 from refine import find_files
-import typing, time, ignite, itertools
+import typing, time, ignite, itertools, psutil
 
 
 def get_leaf_files(dir_path:Path|str) -> typing.Generator[Path]:
@@ -25,15 +25,9 @@ def read_frame_at(cap:cv.VideoCapture, frame_idx:int) -> np.ndarray:
     return frame if ret else None
 
 
-def get_total_frames(cap:cv.VideoCapture):
-    return cap.get(cv.CAP_PROP_FRAME_COUNT)
-
-
-def get_fps(cap:cv.VideoCapture):
-    return cap.get(cv.CAP_PROP_FPS)
-
-
 def iter_frames_at_interval(video_path:str|Path, interval_sec:int) -> list[np.ndarray]:
+    get_total_frames = lambda cap: cap.get(cv.CAP_PROP_FRAME_COUNT)
+    get_fps = lambda cap: cap.get(cv.CAP_PROP_FPS)
     cap = cv.VideoCapture(video_path)
     if not cap.isOpened():
         return
@@ -59,9 +53,14 @@ def iter_frames_at_interval(video_path:str|Path, interval_sec:int) -> list[np.nd
 def process_videos(video_paths:typing.Iterable[Path], output_dir:Path, interval_sec:int):
     output_dir.mkdir(exist_ok=True, parents=True)
     interval_sec = itertools.repeat(interval_sec)
-    with futures.ThreadPoolExecutor(max_workers=22) as executor:
-        results = executor.map(iter_frames_at_interval, video_paths, interval_sec)
-
+    
+    # with futures.ThreadPoolExecutor(max_workers=22) as executor:
+    #     results = executor.map(iter_frames_at_interval, video_paths, interval_sec)
+    
+    
+    with futures.ThreadPoolExecutor(max_workers=22) as executor:    
+        results = executor.submit(iter_frames_at_interval)
+    
     print('파일 로드 완료')
 
     i=0
