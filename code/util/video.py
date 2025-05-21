@@ -2,7 +2,6 @@ import cv2 as cv
 import numpy as np
 from pathlib import Path
 import concurrent.futures as futures
-from refine import find_files
 import typing, time, ignite, itertools
 
 
@@ -77,11 +76,11 @@ def process_videos(video_paths:typing.Iterable[Path], output_dir:Path, interval_
 
 if __name__ == '__main__':
     def main():
-        p = Path(r"E:\Datasets\딥페이크 변조 영상\1.Train\dffs\dffs1")
-        o = Path(r"E:\Datasets\o\dffs")
-        fs = get_leaf_files(p)
-        process_videos(fs, o, 100)
-
+        for i in range(2,7):
+            p = Path(fr"E:\Datasets\딥페이크 변조 영상\1.Train\dffs\dffs{i}")
+            o = Path(fr"E:\Datasets\outputs")
+            fs = get_leaf_files(p)
+            process_videos(fs, o, 100)
     main()
 
 
