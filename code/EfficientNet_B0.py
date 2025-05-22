@@ -12,7 +12,7 @@ def main():
     hyper = trainer.TrainConfig(batch_size=64, patience=5, save_point=5)
 
     dataset_path = Path(r"C:\Users\user\Downloads\deep_fake_augmented")
-    save_dir = dataset_path/'weights'/'EfficientNet_B7'
+    save_dir = dataset_path/'weights'/'EfficientNet_B0'
     save_dir = trainer.no_overwrite(save_dir)
 
     transformer = {  #케이스 별 transform 정의

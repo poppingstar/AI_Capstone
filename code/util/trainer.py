@@ -21,7 +21,7 @@ def check_path(path):
 
 
 @dataclass
-class HyperParameter():
+class TrainConfig():
 	def __init__(self, save_point=30, batch_size=64, workers=12, epochs=10000, patience=10, lr=0.0005, inplace=(224,224),
 				transforms:dict=None, criterion=nn.CrossEntropyLoss(reduction='sum'), optimizer:optim.Optimizer=None):
 		for param, name in zip((save_point, batch_size, workers, epochs, patience),('save_point', 'batch', 'workers', 'epochs', 'patience')):
@@ -301,7 +301,7 @@ def test_run(model:nn.Module, test_loader:DataLoader, hyper_param, save_dir):
 			f.write(f'test: {metrics}')
 
 
-def train_test(model:nn.Module, train_loader:DataLoader, valid_loader:DataLoader, test_loader:DataLoader, hyper_param:HyperParameter, save_dir:Union[Path,str]):  #훈련 및 테스트트 함수
+def train_test(model:nn.Module, train_loader:DataLoader, valid_loader:DataLoader, test_loader:DataLoader, hyper_param:TrainConfig, save_dir:Union[Path,str]):  #훈련 및 테스트트 함수
 	train_valid_run(model, train_loader, valid_loader, hyper_param, save_dir)
 	test_run(model, test_loader, hyper_param, save_dir)
 

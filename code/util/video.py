@@ -33,6 +33,8 @@ def get_leaf_files(dir_path:Path|str) -> Generator[Path]:
 def read_frame_at(cap:cv.VideoCapture, frame_idx:int) -> np.ndarray:
     cap.set(cv.CAP_PROP_POS_FRAMES, frame_idx)
     ret, frame = cap.read()
+
+    
     return frame if ret else None
 
 
@@ -80,7 +82,7 @@ def get_frames_at_interval(video_path:str|Path, interval_sec:int) -> list[np.nda
     return frames
 
 
-def filter_similar_imgs_torchmetrics(imgs: list[np.ndarray], threshold: float = 0.9) -> list[np.ndarray]:
+def filter_similar_imgs(imgs: list[np.ndarray], threshold: float = 0.9) -> list[np.ndarray]:
     """
     imgs: BGR uint8 이미지를 담은 리스트
     returns: 유사도(threshold) 미만인 프레임만 남긴 리스트
@@ -106,9 +108,9 @@ def filter_similar_imgs_torchmetrics(imgs: list[np.ndarray], threshold: float = 
             ref_batch = torch.cat(refs, dim=0)  # [M,3,H,W]
             # 3) batch별 SSIM 계산: ref 마다 current와 비교
             #    output shape: [M] (자동으로 reduction='none')
-            scores = ssim_metric(ref_batch, current.expand_as(ref_batch))  
+            similarity = ssim_metric(ref_batch, current.expand_as(ref_batch))  
             # all scores < threshold 이면 보관
-            if torch.all(scores < threshold):
+            if torch.all(similarity < threshold):
                 refs.append(current)
                 kept_indices.append(i)
 
@@ -130,7 +132,7 @@ def process_videos(paretnt:Path, children:Iterable[Path], output_dir:Path, inter
         frame = get_frames_at_interval(paretnt/child, interval_sec)
         total_frames.extend(frame)
     
-    non_similar_frames = filter_similar_imgs_torchmetrics(total_frames, 0.9)
+    non_similar_frames = filter_similar_imgs(total_frames, 0.9)
 
     output_dir_sub = output_dir/paretnt.name
     save_imgs(non_similar_frames, output_dir_sub)
@@ -147,7 +149,7 @@ if __name__ == '__main__':
 
         parents = [k for k in grouped_files.keys()]
         children = [v for v in grouped_files.values()]
-        with futures.ProcessPoolExecutor(max_workers=8) as executor:
+        with futures.ProcessPoolExecutor(max_workers=3) as executor:
             executor.map(process_videos, parents, children, output_dir, interval)
 
 
