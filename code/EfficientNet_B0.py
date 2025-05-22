@@ -33,10 +33,9 @@ def main():
 
     # model = efficientnet_b7(weights=EfficientNet_B7_Weights.DEFAULT)
     model = efficientnet_b0(weights=EfficientNet_B0_Weights.DEFAULT)
-    trainer.layer_freeze(model, 'features.6')
-    for n, p in model.named_parameters():
-        print(p.size())
-    model.classifier[1] = nn.Linear(2560, out_features=class_num)
+    # trainer.layer_freeze(model, 'features.6')
+    fc_in_features = model.classifier[1].in_features
+    model.classifier[1] = nn.Linear(fc_in_features, out_features=class_num)
 
     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), hyper.lr)
     hyper.set_optimizer(optimizer)

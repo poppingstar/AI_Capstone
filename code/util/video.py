@@ -3,8 +3,10 @@ import numpy as np
 from pathlib import Path
 import concurrent.futures as futures
 from typing import Iterable, Generator
-from skimage.metrics import structural_similarity as ssim
+# from skimage.metrics import structural_similarity as ssim
+from torchmetrics import StructuralSimilarityIndexMeasure
 from itertools import repeat
+import torch
 
 def aggregate(func):
     def wrapper(paths:Iterable[Path]) -> Generator[Path]:
@@ -78,27 +80,63 @@ def get_frames_at_interval(video_path:str|Path, interval_sec:int) -> list[np.nda
     return frames
 
 
-def filter_similar_imgs(imgs:list[np.ndarray], threshold:float) -> list:
-    non_similar = []
-    imgs = imgs.copy()
-    rgb_imgs = [cv.cvtColor(img ,cv.COLOR_BGR2RGB) for img in rgb_imgs]
+# def filter_similar_imgs(imgs:list[np.ndarray], threshold:float) -> list:
+#     non_similar = []
+#     imgs = imgs.copy()
+#     rgb_imgs = [cv.cvtColor(img ,cv.COLOR_BGR2RGB) for img in rgb_imgs]
 
-    while rgb_imgs:
-        temp = []
-        x = rgb_imgs[0]
-        non_similar.append(x)
+#     while rgb_imgs:
+#         temp = []
+#         x = rgb_imgs[0]
+#         non_similar.append(x)
         
 
-        for y in rgb_imgs[1:]:
-            similarity = ssim(x, im2=y, data_range=255, channel_axis=-1)
+#         for y in rgb_imgs[1:]:
+#             similarity = ssim(x, im2=y, data_range=255, channel_axis=-1)
             
-            if similarity < threshold:
-                temp.append(y)
+#             if similarity < threshold:
+#                 temp.append(y)
         
-        rgb_imgs = temp
+#         rgb_imgs = temp
 
-    non_similar = [cv.cvtColor(img, cv.COLOR_RGB2BGR) for img in non_similar]
-    return non_similar
+#     non_similar = [cv.cvtColor(img, cv.COLOR_RGB2BGR) for img in non_similar]
+#     return non_similar
+
+
+def filter_similar_imgs_torchmetrics(imgs: list[np.ndarray], threshold: float = 0.9) -> list[np.ndarray]:
+    """
+    imgs: BGR uint8 이미지를 담은 리스트
+    returns: 유사도(threshold) 미만인 프레임만 남긴 리스트
+    """
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    ssim_metric = StructuralSimilarityIndexMeasure(data_range=1.0).to(device)
+
+    # 2) numpy→Tensor, [N,C,H,W], float, [0,1] 정규화
+    tensors = []
+    for img in imgs:
+        rgb = cv.cvtColor(img, cv.COLOR_BGR2RGB)
+        t = torch.from_numpy(rgb).permute(2,0,1).unsqueeze(0).float() / 255.0
+        tensors.append(t)
+    batch = torch.cat(tensors, dim=0).to(device)  # shape: [N,3,H,W]
+
+    kept_indices = []
+    refs = []  # 기준 프레임 텐서들
+    for i in range(batch.size(0)):
+        current = batch[i:i+1]  # [1,3,H,W]
+        if not refs:
+            refs.append(current); kept_indices.append(i)
+        else:
+            ref_batch = torch.cat(refs, dim=0)  # [M,3,H,W]
+            # 3) batch별 SSIM 계산: ref 마다 current와 비교
+            #    output shape: [M] (자동으로 reduction='none')
+            scores = ssim_metric(ref_batch, current.expand_as(ref_batch))  
+            # all scores < threshold 이면 보관
+            if torch.all(scores < threshold):
+                refs.append(current)
+                kept_indices.append(i)
+
+    # 4) 인덱스 기반으로 원본 BGR 이미지 반환
+    return [imgs[i] for i in kept_indices]
 
 
 def save_imgs(imgs:np.ndarray, output_dir:Path) -> None:
