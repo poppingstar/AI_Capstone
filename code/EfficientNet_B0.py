@@ -39,17 +39,11 @@ def main():
 
     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), hyper.lr)
     hyper.set_optimizer(optimizer)
-
-    hyper.save_log(save_dir/'log.txt')
-    for i, _ in model.named_parameters():
-        print(i)
-
     hyper.save_log(save_dir/'log.txt')
 
     trainer.train_test(model, train_loader, validation_loader, 
                             test_loader, hyper, save_dir)
-    trainer.train_test(model, train_loader, validation_loader, 
-                            test_loader, hyper, save_dir)
+
 
 
 if __name__ == '__main__':
