@@ -2,13 +2,13 @@ import torch
 from torchvision import transforms
 import torch.nn as nn
 from torch.utils.data import DataLoader
-from torchvision.models import efficientnet_b6, EfficientNet_B6_Weights
+from torchvision.models import efficientnet_b5, EfficientNet_B5_Weights
 import util.trainer as trainer
 from pathlib import Path
 
 
 def main():
-    hyper = trainer.TrainConfig(batch_size=24, patience=5, save_point=5)
+    hyper = trainer.TrainConfig(batch_size=32, patience=5, save_point=5)
 
     dataset_path = Path(r"C:\Users\user\Downloads\deep_fake_augmented")
     save_dir = dataset_path/'weights'/'EfficientNet_B6'
@@ -30,7 +30,7 @@ def main():
     test_loader = DataLoader(test_dataset, hyper.batch_size,True,num_workers=hyper.workers,pin_memory=True,drop_last=False)
     class_num = len(train_dataset.classes)
 
-    model = efficientnet_b6(weights=EfficientNet_B6_Weights.DEFAULT)
+    model = efficientnet_b5(weights=EfficientNet_B5_Weights.DEFAULT)
     trainer.layer_freeze(model, 'features.6')
     fc_in_features = model.classifier[1].in_features
     model.classifier[1] = nn.Linear(fc_in_features, out_features=class_num)
