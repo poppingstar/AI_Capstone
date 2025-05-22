@@ -35,8 +35,7 @@ def read_frame_at(cap:cv.VideoCapture, frame_idx:int) -> np.ndarray:
 
     if ret:
         rgb = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
-        tensor = torch.from_numpy(rgb).permute(2,0,1).unsqueeze(0).float() / 255.0
-        return tensor
+        return rgb
     return None
 
 
@@ -89,7 +88,7 @@ def get_frames_at_interval(video_path:str|Path, interval_sec:int) -> list[np.nda
     return frames
 
 
-def filter_similar_imgs(imgs: list[np.ndarray], threshold: float = 0.9) -> list[np.ndarray]:
+def filter_similar_imgs(imgs:torch.Tensor, threshold: float = 0.9) -> list[torch.Tensor]:
     """
     imgs: BGR uint8 이미지를 담은 리스트
     returns: 유사도(threshold) 미만인 프레임만 남긴 리스트
@@ -98,12 +97,12 @@ def filter_similar_imgs(imgs: list[np.ndarray], threshold: float = 0.9) -> list[
     ssim_metric = StructuralSimilarityIndexMeasure(data_range=1.0).to(device)
 
     # 2) numpy→Tensor, [N,C,H,W], float, [0,1] 정규화
-    tensors = []
-    for img in imgs:
-        rgb = cv.cvtColor(img, cv.COLOR_BGR2RGB)
-        t = torch.from_numpy(rgb).permute(2,0,1).unsqueeze(0).float() / 255.0
-        tensors.append(t)
-    batch = torch.cat(tensors, dim=0).to(device)  # shape: [N,3,H,W]
+    # tensors = []
+    # for img in imgs:
+    #     rgb = cv.cvtColor(img, cv.COLOR_BGR2RGB)
+    #     t = torch.from_numpy(rgb).permute(2,0,1).unsqueeze(0).float() / 255.0
+    #     tensors.append(t)
+    # batch = torch.cat(tensors, dim=0).to(device)  # shape: [N,3,H,W]
 
     kept_indices = []
     refs = []  # 기준 프레임 텐서들
@@ -132,27 +131,21 @@ def save_imgs(imgs:np.ndarray, output_dir:Path) -> None:
 
 
 def process_videos(paretnt:Path, children:Iterable[Path], output_dir:Path, interval_sec:int):
-    output_dir.mkdir(exist_ok=True, parents=True)
+    device = 'cuda' if torch.cuda.is_available() else 'cpu' 
     
-    total_frames = []
+    tensors = []
     for child in children:
         frames = get_frames_at_interval(paretnt/child, interval_sec)
-        total_frames.extend(frames)
+        for frame in frames:
+            tensor = torch.from_numpy(frame)
+            tensor.permute(2,0,1).unsqueeze(0).float() / 255.0
+            tensors.append(tensor)
     
-    torch.cat(total_frames)
-    non_similar_frames = filter_similar_imgs(total_frames, 0.9)
+    batch = torch.cat(tensors, 0).to(device)
+    non_similar_frames = filter_similar_imgs(batch, 0.9)
 
     output_dir_sub = output_dir/paretnt.name
     save_imgs(non_similar_frames, output_dir_sub)
-
-    #######################이거 위 함수와 합쳐
-
-    # tensors = []
-    # for img in imgs:
-    #     rgb = cv.cvtColor(img, cv.COLOR_BGR2RGB)
-    #     t = torch.from_numpy(rgb).permute(2,0,1).unsqueeze(0).float() / 255.0
-    #     tensors.append(t)
-    # batch = torch.cat(tensors, dim=0).to(device)  # shape: [N,3,H,W]
 
 
 if __name__ == '__main__':
@@ -168,5 +161,3 @@ if __name__ == '__main__':
         with futures.ProcessPoolExecutor(max_workers=3) as executor:
             executor.map(process_videos, parents, children, output_dir, interval)
 
-
-    main()
