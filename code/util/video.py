@@ -8,15 +8,6 @@ from itertools import repeat
 import torch
 
 
-def aggregate(func):
-    def wrapper(paths:Iterable[Path]) -> Generator[Path]:
-        for path in paths:
-            frames = func(path)
-            yield from frames
-
-    return wrapper
-
-
 def get_leaf_files(dir_path:Path|str) -> Generator[Path]:
     dir_path = Path(dir_path)
 
@@ -30,6 +21,14 @@ def get_leaf_files(dir_path:Path|str) -> Generator[Path]:
                 yield child
 
 
+def aggregate(func):
+    def wrapper(paths:Iterable[Path]) -> Generator[Path]:
+        for path in paths:
+            frames = func(path)
+            yield from frames
+    return wrapper
+
+
 def read_frame_at(cap:cv.VideoCapture, frame_idx:int) -> np.ndarray:
     cap.set(cv.CAP_PROP_POS_FRAMES, frame_idx)
     ret, frame = cap.read()
@@ -38,9 +37,7 @@ def read_frame_at(cap:cv.VideoCapture, frame_idx:int) -> np.ndarray:
         rgb = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
         tensor = torch.from_numpy(rgb).permute(2,0,1).unsqueeze(0).float() / 255.0
         return tensor
-    else:
-        return None
-    
+    return None
 
 
 def get_parents_by_files(files:Iterable[Path], *suffixes:str)->dict[Path]:
@@ -49,15 +46,18 @@ def get_parents_by_files(files:Iterable[Path], *suffixes:str)->dict[Path]:
     
     grouped_files = {}
     for f in files:
+
         if not matches_suffix(f):
             continue
+
         parent = f.parent
         name = f.name
+
         if parent not in grouped_files:
             grouped_files[parent] = [name]
         else:
             grouped_files[parent].append(name)
-    
+
     return grouped_files
 
 
@@ -78,8 +78,10 @@ def get_frames_at_interval(video_path:str|Path, interval_sec:int) -> list[np.nda
         for frame_idx in range(1, total_frame, step):
             target_frame = np.random.randint(past_frame_idx, frame_idx)
             frame = read_frame_at(cap, target_frame)
+
             if frame is None:
                 break
+
             frames.append(frame)
             past_frame_idx = frame_idx
     finally:
@@ -134,13 +136,23 @@ def process_videos(paretnt:Path, children:Iterable[Path], output_dir:Path, inter
     
     total_frames = []
     for child in children:
-        frame = get_frames_at_interval(paretnt/child, interval_sec)
-        total_frames.extend(frame)
+        frames = get_frames_at_interval(paretnt/child, interval_sec)
+        total_frames.extend(frames)
     
+    torch.cat(total_frames)
     non_similar_frames = filter_similar_imgs(total_frames, 0.9)
 
     output_dir_sub = output_dir/paretnt.name
     save_imgs(non_similar_frames, output_dir_sub)
+
+    #######################이거 위 함수와 합쳐
+
+    # tensors = []
+    # for img in imgs:
+    #     rgb = cv.cvtColor(img, cv.COLOR_BGR2RGB)
+    #     t = torch.from_numpy(rgb).permute(2,0,1).unsqueeze(0).float() / 255.0
+    #     tensors.append(t)
+    # batch = torch.cat(tensors, dim=0).to(device)  # shape: [N,3,H,W]
 
 
 if __name__ == '__main__':
@@ -150,7 +162,6 @@ if __name__ == '__main__':
         interval = repeat(1000)
         leafs = get_leaf_files(root_dir)
         grouped_files = get_parents_by_files(leafs, '.mp4')
-
 
         parents = [k for k in grouped_files.keys()]
         children = [v for v in grouped_files.values()]
