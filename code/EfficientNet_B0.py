@@ -16,8 +16,8 @@ def main():
     save_dir = trainer.no_overwrite(save_dir)
 
     transformer = {  #케이스 별 transform 정의
-                'train':transforms.Compose([transforms.RandomAdjustSharpness(4),transforms.RandomVerticalFlip(),
-                                                        transforms.ColorJitter(0.5,0.5,0.5,0.1),transforms.RandomRotation(90)]),
+                'train':transforms.Compose([transforms.RandomAdjustSharpness(4), transforms.RandomVerticalFlip(), transforms.ColorJitter(0.5,0.5,0.5,0.1),
+                                            transforms.RandomRotation(90), transforms.ToTensor()]),
                 'valid':transforms.Compose([transforms.Resize(224), transforms.ToTensor()]),
                 'test':transforms.Compose([transforms.Resize(224),  transforms.ToTensor()])
                 }
