@@ -25,7 +25,7 @@ def main():
     validation_dataset = trainer.DirDataset(dataset_path/'valid',transformer['valid'])
     test_dataset = trainer.DirDataset(dataset_path/'test', transformer['test'])
 
-    train_loader = DataLoader(train_dataset,hyper.batch_size,True,num_workers=hyper.workers,pin_memory=True,drop_last=False, shuffle=True)
+    train_loader = DataLoader(train_dataset,hyper.batch_size,True,num_workers=hyper.workers,pin_memory=True,drop_last=False)
     validation_loader = DataLoader(validation_dataset, hyper.batch_size,True,num_workers=hyper.workers,pin_memory=True,drop_last=False)
     test_loader = DataLoader(test_dataset, hyper.batch_size,True,num_workers=hyper.workers,pin_memory=True,drop_last=False)
     class_num = len(train_dataset.classes)

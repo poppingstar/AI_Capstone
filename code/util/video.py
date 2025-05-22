@@ -34,8 +34,13 @@ def read_frame_at(cap:cv.VideoCapture, frame_idx:int) -> np.ndarray:
     cap.set(cv.CAP_PROP_POS_FRAMES, frame_idx)
     ret, frame = cap.read()
 
+    if ret:
+        rgb = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
+        tensor = torch.from_numpy(rgb).permute(2,0,1).unsqueeze(0).float() / 255.0
+        return tensor
+    else:
+        return None
     
-    return frame if ret else None
 
 
 def get_parents_by_files(files:Iterable[Path], *suffixes:str)->dict[Path]:
