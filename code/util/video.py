@@ -3,10 +3,10 @@ import numpy as np
 from pathlib import Path
 import concurrent.futures as futures
 from typing import Iterable, Generator
-# from skimage.metrics import structural_similarity as ssim
-from torchmetrics import StructuralSimilarityIndexMeasure
+from torchmetrics.image import StructuralSimilarityIndexMeasure
 from itertools import repeat
 import torch
+
 
 def aggregate(func):
     def wrapper(paths:Iterable[Path]) -> Generator[Path]:
@@ -80,29 +80,6 @@ def get_frames_at_interval(video_path:str|Path, interval_sec:int) -> list[np.nda
     return frames
 
 
-# def filter_similar_imgs(imgs:list[np.ndarray], threshold:float) -> list:
-#     non_similar = []
-#     imgs = imgs.copy()
-#     rgb_imgs = [cv.cvtColor(img ,cv.COLOR_BGR2RGB) for img in rgb_imgs]
-
-#     while rgb_imgs:
-#         temp = []
-#         x = rgb_imgs[0]
-#         non_similar.append(x)
-        
-
-#         for y in rgb_imgs[1:]:
-#             similarity = ssim(x, im2=y, data_range=255, channel_axis=-1)
-            
-#             if similarity < threshold:
-#                 temp.append(y)
-        
-#         rgb_imgs = temp
-
-#     non_similar = [cv.cvtColor(img, cv.COLOR_RGB2BGR) for img in non_similar]
-#     return non_similar
-
-
 def filter_similar_imgs_torchmetrics(imgs: list[np.ndarray], threshold: float = 0.9) -> list[np.ndarray]:
     """
     imgs: BGR uint8 이미지를 담은 리스트
@@ -153,7 +130,7 @@ def process_videos(paretnt:Path, children:Iterable[Path], output_dir:Path, inter
         frame = get_frames_at_interval(paretnt/child, interval_sec)
         total_frames.extend(frame)
     
-    non_similar_frames = filter_similar_imgs(total_frames, 0.9)
+    non_similar_frames = filter_similar_imgs_torchmetrics(total_frames, 0.9)
 
     output_dir_sub = output_dir/paretnt.name
     save_imgs(non_similar_frames, output_dir_sub)
@@ -170,7 +147,7 @@ if __name__ == '__main__':
 
         parents = [k for k in grouped_files.keys()]
         children = [v for v in grouped_files.values()]
-        with futures.ProcessPoolExecutor(max_workers=24) as executor:
+        with futures.ProcessPoolExecutor(max_workers=8) as executor:
             executor.map(process_videos, parents, children, output_dir, interval)
 
 
