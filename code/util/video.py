@@ -4,8 +4,6 @@ from pathlib import Path
 import concurrent.futures as futures
 from typing import Iterable, Generator
 from copy import deepcopy
-# import ignite, itertools
-import time
 from skimage.metrics import structural_similarity as ssim
 
 
@@ -85,18 +83,21 @@ def filter_similar_imgs(imgs:list[np.ndarray], threshold:float) -> list:
     imgs = imgs.copy()
     while imgs:
         temp = []
-        x = imgs[0]
         non_similar.append(x)
+        x = cv.cvtColor(x, cv.COLOR_BGR2RGB)
+        x = imgs[0]
+        
 
         for y in imgs[1:]:
-            ssim.update((x,y))
-            similarity = ssim.compute()
+            y = cv.cvtColor(y, cv.COLOR_BGR2RGB)
+            similarity = ssim(x, im2=y, data_range=255, channel_axis=-1)
             
             if similarity < threshold:
                 temp.append(y)
         
         imgs = temp
 
+    non_similar = [cv.cvtColor(img, cv.COLOR_RGB2BGR) for img in non_similar]
     return non_similar
 
 
@@ -133,14 +134,3 @@ if __name__ == '__main__':
             executor.map(process_videos, grouped_files.items())
 
     # main()
-    
-    x = cv.imread(r"E:\Datasets\outputs\ex\dffs\3.png")
-    y = cv.imread(r"E:\Datasets\outputs\ex\dffs\4.png")
-
-    x = cv.cvtColor(x, cv.COLOR_BGR2RGB)
-    y = cv.cvtColor(y, cv.COLOR_BGR2RGB)
-
-    since = time.time()
-    similarity = ssim(x, y, data_range=255, channel_axis=-1)
-    duration = time.time()-since
-    print(similarity, duration)
