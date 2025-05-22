@@ -2,10 +2,23 @@ import cv2 as cv
 import numpy as np
 from pathlib import Path
 import concurrent.futures as futures
-import typing, time, ignite, itertools
+from typing import Iterable, Generator
+from copy import deepcopy
+# import ignite, itertools
+import time
+from skimage.metrics import structural_similarity as ssim
 
 
-def get_leaf_files(dir_path:Path|str) -> typing.Generator[Path]:
+def aggregate(func):
+    def wrapper(paths:Iterable[Path]) -> Generator[Path]:
+        for path in paths:
+            frames = func(path)
+            yield from frames
+
+    return wrapper
+
+
+def get_leaf_files(dir_path:Path|str) -> Generator[Path]:
     dir_path = Path(dir_path)
 
     if not dir_path.is_dir():
@@ -24,15 +37,27 @@ def read_frame_at(cap:cv.VideoCapture, frame_idx:int) -> np.ndarray:
     return frame if ret else None
 
 
-def get_total_frames(cap:cv.VideoCapture):
-    return cap.get(cv.CAP_PROP_FRAME_COUNT)
+def get_parents_by_files(files:Iterable[Path], *suffixes:str)->dict[Path]:
+    suffixes = set(suffixes)
+    matches_suffix = (lambda x: x.suffix in suffixes) if suffixes else (lambda x: True)
+    
+    grouped_files = {}
+    for f in files:
+        if not matches_suffix(f):
+            continue
+        parent = f.parent
+        name = f.name
+        if parent not in grouped_files:
+            grouped_files[parent] = [name]
+        else:
+            grouped_files[parent].append(name)
+    
+    return grouped_files
 
 
-def get_fps(cap:cv.VideoCapture):
-    return cap.get(cv.CAP_PROP_FPS)
-
-
-def iter_frames_at_interval(video_path:str|Path, interval_sec:int) -> list[np.ndarray]:
+def get_frames_at_interval(video_path:str|Path, interval_sec:int) -> list[np.ndarray]:
+    get_total_frames = lambda cap: cap.get(cv.CAP_PROP_FRAME_COUNT)
+    get_fps = lambda cap: cap.get(cv.CAP_PROP_FPS)
     cap = cv.VideoCapture(video_path)
     if not cap.isOpened():
         return
@@ -55,59 +80,67 @@ def iter_frames_at_interval(video_path:str|Path, interval_sec:int) -> list[np.nd
     return frames
 
 
-def process_videos(video_paths:typing.Iterable[Path], output_dir:Path, interval_sec:int):
+def filter_similar_imgs(imgs:list[np.ndarray], threshold:float) -> list:
+    non_similar = []
+    imgs = imgs.copy()
+    while imgs:
+        temp = []
+        x = imgs[0]
+        non_similar.append(x)
+
+        for y in imgs[1:]:
+            ssim.update((x,y))
+            similarity = ssim.compute()
+            
+            if similarity < threshold:
+                temp.append(y)
+        
+        imgs = temp
+
+    return non_similar
+
+
+def save_imgs(imgs:np.ndarray, output_dir:Path) -> None:
+    output_dir = Path(output_dir)
+    for i, img in enumerate(imgs):
+        cv.imwrite(output_dir/f'{i}.png', img)
+
+
+def process_videos(video_paths:Iterable[Path], output_dir:Path, interval_sec:int):
     output_dir.mkdir(exist_ok=True, parents=True)
-    interval_sec = itertools.repeat(interval_sec)
-    with futures.ThreadPoolExecutor(max_workers=22) as executor:
-        results = executor.map(iter_frames_at_interval, video_paths, interval_sec)
 
-    print('파일 로드 완료')
+    k = video_paths.keys()
+    
+    total_frames = []   #좀 문제 있음
+    for video_path in video_paths.values:
+        frame = get_frames_at_interval(video_path,1000)
+        total_frames.extend(frame)
+    
+    non_similar_frames = filter_similar_imgs(total_frames, 0.9)
 
-    i=0
-    for frames in results:
-        for frame in frames:
-            out = output_dir/f'{i}.png'
-            cv.imwrite(out, frame)
-            i+=1
-
-
-
+    output_dir_sub = output_dir/k.parent
+    save_imgs(non_similar_frames, output_dir_sub)
 
 
 if __name__ == '__main__':
     def main():
-        for i in range(2,7):
-            p = Path(fr"E:\Datasets\딥페이크 변조 영상\1.Train\dffs\dffs{i}")
-            o = Path(fr"E:\Datasets\outputs")
-            fs = get_leaf_files(p)
-            process_videos(fs, o, 100)
-    main()
+        root_dir = Path(fr"E:\Datasets\딥페이크 변조 영상\1.Train\dffs")
+        output_dir = Path(fr"E:\Datasets\outputs")
+        leafs = get_leaf_files(root_dir)
+        grouped_files = get_parents_by_files(leafs, '.mp4')
 
+        with futures.ProcessPoolExecutor(max_workers=24) as executor:
+            executor.map(process_videos, grouped_files.items())
 
+    # main()
+    
+    x = cv.imread(r"E:\Datasets\outputs\ex\dffs\3.png")
+    y = cv.imread(r"E:\Datasets\outputs\ex\dffs\4.png")
 
-# from ignite.engine import Engine
-# from ignite.metrics import SSIM
-# import torch
+    x = cv.cvtColor(x, cv.COLOR_BGR2RGB)
+    y = cv.cvtColor(y, cv.COLOR_BGR2RGB)
 
-# # 평가 단계에서 사용할 함수 정의
-# def eval_step(engine, batch):
-#     return batch
-
-# # 평가 엔진 생성
-# evaluator = Engine(eval_step)
-
-# # SSIM 메트릭 인스턴스 생성
-# ssim_metric = SSIM(data_range=1.0)
-
-# # 메트릭을 평가 엔진에 부착
-# ssim_metric.attach(evaluator, 'ssim')
-
-# # 예측값과 실제값 생성 (예시용 랜덤 텐서)
-# preds = torch.rand([4, 3, 16, 16])
-# target = preds * 0.75
-
-# # 평가 실행
-# state = evaluator.run([[preds, target]])
-
-# # SSIM 결과 출력
-# print(state.metrics['ssim'])
+    since = time.time()
+    similarity = ssim(x, y, data_range=255, channel_axis=-1)
+    duration = time.time()-since
+    print(similarity, duration)
