@@ -39,7 +39,7 @@ def get_input_size(model):
 if __name__ == '__main__':
     def main():
         model_name = 'EfficientNet_B0'
-        hyper = trainer.TrainConfig(batch_size=96, patience=5, save_point=5)
+        hyper = trainer.TrainConfig(batch_size=128, patience=5, save_point=5)
         input_size = get_input_size(model_name)
 
         dataset_path = Path(r"E:\Datasets\deep_fake")
