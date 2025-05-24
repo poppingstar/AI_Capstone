@@ -54,8 +54,9 @@ if __name__ == '__main__':
         save_dir = trainer.no_overwrite(save_dir)
         
         transformer = {  #케이스 별 transform 정의
-                    'train':transforms.Compose([transforms.Resize(input_size), transforms.RandomAdjustSharpness(4), transforms.RandomHorizontalFlip(), 
-                                                transforms.ColorJitter(0.5,0.5,0.5,0.1), transforms.RandomRotation(90), transforms.ToTensor()]),
+                    'train':transforms.Compose([
+                        transforms.Resize(input_size), transforms.RandomAdjustSharpness(4), transforms.RandomHorizontalFlip(), 
+                        transforms.ColorJitter(0.5,0.5,0.5,0.1), transforms.RandomRotation(90), transforms.ToTensor()]),
                     'valid':transforms.Compose([transforms.Resize(input_size), transforms.ToTensor()]),
                     'test':transforms.Compose([transforms.Resize(input_size),  transforms.ToTensor()])
                     }
@@ -74,7 +75,7 @@ if __name__ == '__main__':
 
         model = model_maker(weights = pre_trained_weight)
         model._get_name()
-        trainer.layer_freeze(model, 'features.6')
+        # trainer.layer_freeze(model, 'features.6')
         fc_in_features = model.classifier[1].in_features
         model.classifier[1] = nn.Linear(fc_in_features, out_features=class_num)
 
