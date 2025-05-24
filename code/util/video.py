@@ -88,7 +88,7 @@ def get_frames_at_interval(video_path:str|Path, interval_sec:int) -> list[np.nda
     return frames
 
 
-def filter_similar_imgs(imgs:torch.Tensor, threshold: float = 0.9) -> list[torch.Tensor]:
+def filter_similar_imgs(batch:torch.Tensor, threshold: float = 0.9) -> list[torch.Tensor]:
     """
     imgs: BGR uint8 이미지를 담은 리스트
     returns: 유사도(threshold) 미만인 프레임만 남긴 리스트
@@ -106,22 +106,22 @@ def filter_similar_imgs(imgs:torch.Tensor, threshold: float = 0.9) -> list[torch
 
     kept_indices = []
     refs = []  # 기준 프레임 텐서들
-    for i in range(batch.size(0)):
+    for i in range(batch.shape[0]):
         current = batch[i:i+1]  # [1,3,H,W]
         if not refs:
             refs.append(current); kept_indices.append(i)
         else:
             ref_batch = torch.cat(refs, dim=0)  # [M,3,H,W]
             # 3) batch별 SSIM 계산: ref 마다 current와 비교
-            #    output shape: [M] (자동으로 reduction='none')
-            similarity = ssim_metric(ref_batch, current.expand_as(ref_batch))  
+            #    output shape: [M] (자 동으로 reduction='none')
+            similarity = ssim_metric(ref_batch, current.expand(ref_batch))   ####코드 해석하고 이어서 바꾸기
             # all scores < threshold 이면 보관
             if torch.all(similarity < threshold):
                 refs.append(current)
                 kept_indices.append(i)
 
     # 4) 인덱스 기반으로 원본 BGR 이미지 반환
-    return [imgs[i] for i in kept_indices]
+    return [batch[i] for i in kept_indices]
 
 
 def save_imgs(imgs:np.ndarray, output_dir:Path) -> None:
@@ -158,6 +158,7 @@ if __name__ == '__main__':
 
         parents = [k for k in grouped_files.keys()]
         children = [v for v in grouped_files.values()]
-        with futures.ProcessPoolExecutor(max_workers=3) as executor:
+        with futures.ProcessPoolExecutor(max_workers=2) as executor:
             executor.map(process_videos, parents, children, output_dir, interval)
 
+    main()
