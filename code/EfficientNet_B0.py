@@ -2,7 +2,6 @@ import torch
 from torchvision import transforms
 import torch.nn as nn
 from torch.utils.data import DataLoader
-# from torchvision.models import efficientnet_b7, EfficientNet_B7_Weights
 from torchvision.models import efficientnet_b0, EfficientNet_B0_Weights
 import util.trainer as trainer
 from pathlib import Path
